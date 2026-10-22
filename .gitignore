@@ -1,0 +1,49 @@
+# ---------------- Python ----------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------------- Node / Vite ----------------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# ---------------- Environment ----------------
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ---------------- Project runtime data ----------------
+# Uploaded documents and generated summaries are transient user data.
+uploads/*
+outputs/*
+!uploads/.gitkeep
+!outputs/.gitkeep
+
+# ---------------- Model caches (downloaded at first run) ----------------
+.cache/
+models/
+*.safetensors
+*.bin
+
+# ---------------- Editors / OS ----------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---------------- Logs ----------------
+*.log
+npm-debug.log*
+
+# Generated test fixtures
+backend/tests/fixtures/
