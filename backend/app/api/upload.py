@@ -65,6 +65,23 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
     metadata = document_service.build_metadata(document_id, filename, result, cleaned)
     document_service.save_document(document_id, cleaned.text, metadata)
 
+    try:
+        from app.services import history_service
+
+        history_service.save_document(
+            document_id=document_id,
+            filename=filename,
+            file_type=file_type,
+            character_count=metadata["character_count"],
+            word_count=metadata["word_count"],
+            page_count=metadata.get("page_count"),
+            ocr_used=metadata.get("ocr_used", False),
+            extraction_method=metadata.get("extraction_method", ""),
+            preview=make_preview(cleaned.text),
+        )
+    except Exception as exc:
+        logger.warning("Failed to save document to history database: %s", exc)
+
     logger.info(
         "Uploaded %s (%s): %d words, %d chunk(s), %s page(s)",
         filename,

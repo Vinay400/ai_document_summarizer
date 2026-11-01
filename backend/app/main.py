@@ -16,7 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import evaluate, health, summarize, upload
+from app.api import chat, evaluate, health, history, summarize, upload
 from app.config import settings
 
 logging.basicConfig(
@@ -93,6 +93,8 @@ app.include_router(health.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
 app.include_router(summarize.router, prefix="/api")
 app.include_router(evaluate.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
+app.include_router(history.router, prefix="/api")
 
 
 @app.get("/", tags=["System"], summary="Service banner")

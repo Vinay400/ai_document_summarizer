@@ -156,3 +156,110 @@ Summarizes an uploaded document and calculates ROUGE-1, ROUGE-2, ROUGE-L, and BL
 
 * `404 Not Found`: Unknown `document_id`.
 * `422 Unprocessable Entity`: Missing reference text or invalid parameters.
+
+---
+
+### 5. Compare All Summarization Modes
+
+`POST /api/summarize/compare`
+
+Runs Extractive, Abstractive, and Hybrid summarization concurrently on the document, returning text, compression ratio, word counts, and latency metrics for each strategy.
+
+#### Request Body
+
+```json
+{
+  "document_id": "a1b2c3d4e5f6...",
+  "length": "medium"
+}
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "document_id": "a1b2c3d4e5f6...",
+  "length": "medium",
+  "original_word_count": 1980,
+  "original_character_count": 12450,
+  "modes": {
+    "extractive": {
+      "mode": "extractive",
+      "summary": "...",
+      "word_count": 140,
+      "character_count": 890,
+      "compression_ratio": 92.9,
+      "latency_seconds": 0.35
+    },
+    "abstractive": {
+      "mode": "abstractive",
+      "summary": "...",
+      "word_count": 125,
+      "character_count": 810,
+      "compression_ratio": 93.7,
+      "latency_seconds": 3.42
+    },
+    "hybrid": {
+      "mode": "hybrid",
+      "summary": "...",
+      "word_count": 130,
+      "character_count": 835,
+      "compression_ratio": 93.4,
+      "latency_seconds": 2.15
+    }
+  }
+}
+```
+
+---
+
+### 6. Compare Multi-Strategy Evaluation
+
+`POST /api/evaluate/compare`
+
+Scores Extractive, Abstractive, and Hybrid summaries against a single ground-truth reference summary using ROUGE-1/2/L and BLEU. Accepts optional precomputed summaries to avoid re-running inference.
+
+#### Request Body
+
+```json
+{
+  "document_id": "a1b2c3d4e5f6...",
+  "reference": "A human-written reference summary of the document.",
+  "length": "medium",
+  "summaries": {
+    "extractive": "...",
+    "abstractive": "...",
+    "hybrid": "..."
+  }
+}
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "document_id": "a1b2c3d4e5f6...",
+  "length": "medium",
+  "reference": "A human-written reference summary of the document.",
+  "original_word_count": 1980,
+  "modes": {
+    "extractive": {
+      "mode": "extractive",
+      "summary": "...",
+      "word_count": 140,
+      "character_count": 890,
+      "compression_ratio": 92.9,
+      "latency_seconds": 0.0,
+      "metrics": {
+        "rouge_1": 0.78,
+        "rouge_2": 0.54,
+        "rouge_l": 0.75,
+        "bleu": 42.1
+      }
+    },
+    "abstractive": { ... },
+    "hybrid": { ... }
+  }
+}
+```
+

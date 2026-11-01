@@ -131,4 +131,107 @@ export async function evaluateDocument({ document_id, reference, mode = 'extract
   return data
 }
 
+/**
+ * Request summaries for all 3 modes (extractive, abstractive, hybrid) simultaneously.
+ *
+ * @param {Object} params
+ * @param {string} params.document_id
+ * @param {string} [params.length='medium']
+ * @returns {Promise<CompareSummarizeResponse>}
+ */
+export async function compareSummarizeDocument({ document_id, length = 'medium' }) {
+  const { data } = await apiClient.post('/api/summarize/compare', {
+    document_id,
+    length,
+  })
+  return data
+}
+
+/**
+ * Request evaluation of all 3 summarization modes against a ground-truth reference.
+ *
+ * @param {Object} params
+ * @param {string} params.document_id
+ * @param {string} params.reference
+ * @param {string} [params.length='medium']
+ * @param {Object} [params.summaries]
+ * @returns {Promise<CompareEvaluateResponse>}
+ */
+export async function compareEvaluateDocument({ document_id, reference, length = 'medium', summaries = null }) {
+  const { data } = await apiClient.post('/api/evaluate/compare', {
+    document_id,
+    reference,
+    length,
+    summaries,
+  })
+  return data
+}
+
+/**
+ * Ask a question about an uploaded document using RAG.
+ *
+ * @param {Object} params
+ * @param {string} params.document_id
+ * @param {string} params.question
+ * @returns {Promise<{question: string, answer: string, confidence: number, sources: string[]}>}
+ */
+export async function chatWithDocument({ document_id, question }) {
+  const { data } = await apiClient.post('/api/chat', {
+    document_id,
+    question,
+  })
+  return data
+}
+
+/**
+ * Fetch all past documents and summaries from the history database.
+ *
+ * @returns {Promise<{documents: Array<Object>}>}
+ */
+export async function fetchHistory() {
+  const { data } = await apiClient.get('/api/history')
+  return data
+}
+
+/**
+ * Fetch full history details for a single document.
+ *
+ * @param {string} document_id
+ * @returns {Promise<Object>}
+ */
+export async function fetchHistoryDocument(document_id) {
+  const { data } = await apiClient.get(`/api/history/${document_id}`)
+  return data
+}
+
+/**
+ * Delete a document from history.
+ *
+ * @param {string} document_id
+ * @returns {Promise<{message: string}>}
+ */
+export async function deleteHistoryItem(document_id) {
+  const { data } = await apiClient.delete(`/api/history/${document_id}`)
+  return data
+}
+
+/**
+ * Generate a downloadable Executive Summary Report.
+ *
+ * @param {Object} params
+ * @param {string} params.document_id
+ * @param {string} [params.mode='extractive']
+ * @param {string} [params.length='medium']
+ * @returns {Promise<{document_id: string, filename: string, markdown: string, html: string}>}
+ */
+export async function exportExecutiveBrief({ document_id, mode = 'extractive', length = 'medium' }) {
+  const { data } = await apiClient.post('/api/export/brief', {
+    document_id,
+    mode,
+    length,
+  })
+  return data
+}
+
 export default apiClient
+

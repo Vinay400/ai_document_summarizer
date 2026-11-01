@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
+import ComparisonMatrix from '../components/ComparisonMatrix.jsx'
+import DocumentChat from '../components/DocumentChat.jsx'
 import EvaluationPanel from '../components/EvaluationPanel.jsx'
 import FileUploader from '../components/FileUploader.jsx'
+import HistoryDrawer from '../components/HistoryDrawer.jsx'
 import LengthSelector from '../components/LengthSelector.jsx'
 import ModeSelector from '../components/ModeSelector.jsx'
 import SummaryDisplay from '../components/SummaryDisplay.jsx'
 import {
   checkHealth,
+  compareEvaluateDocument,
+  compareSummarizeDocument,
   evaluateDocument,
+  fetchHistoryDocument,
   summarizeDocument,
   uploadDocument,
 } from '../services/api.js'
@@ -26,9 +32,19 @@ export default function Home() {
   const [length, setLength] = useState('medium')
   const [summaryResult, setSummaryResult] = useState(null)
 
+  // Comparison state
+  const [viewMode, setViewMode] = useState('single') // 'single' | 'compare'
+  const [isComparing, setIsComparing] = useState(false)
+  const [comparisonResult, setComparisonResult] = useState(null)
+  const [comparisonMetrics, setComparisonMetrics] = useState(null)
+  const [isComparingEval, setIsComparingEval] = useState(false)
+
   // Evaluation state
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [evalMetrics, setEvalMetrics] = useState(null)
+
+  // SQLite History State
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
   // Error handling
   const [errorMessage, setErrorMessage] = useState(null)
@@ -56,6 +72,9 @@ export default function Home() {
     setErrorMessage(null)
     setSummaryResult(null)
     setEvalMetrics(null)
+    setComparisonResult(null)
+    setComparisonMetrics(null)
+    setViewMode('single')
     try {
       const res = await uploadDocument(file)
       setUploadResult(res)
@@ -66,9 +85,52 @@ export default function Home() {
     }
   }
 
+  const handleSelectFromHistory = async (item) => {
+    setErrorMessage(null)
+    setUploadResult({
+      document_id: item.document_id,
+      filename: item.filename,
+      file_type: item.file_type,
+      character_count: item.character_count,
+      word_count: item.word_count,
+      page_count: item.page_count,
+      ocr_used: item.ocr_used,
+      extraction_method: item.extraction_method,
+      preview: item.preview,
+      cleaning: null,
+      warnings: [],
+    })
+    setSummaryResult(null)
+    setComparisonResult(null)
+    setEvalMetrics(null)
+    setComparisonMetrics(null)
+    setViewMode('single')
+    setPageState('uploaded')
+
+    try {
+      const details = await fetchHistoryDocument(item.document_id)
+      if (details?.summaries?.length > 0) {
+        const latest = details.summaries[0]
+        setSummaryResult({
+          document_id: latest.document_id,
+          mode: latest.mode,
+          length: latest.length,
+          summary: latest.summary,
+          analytics: latest.analytics,
+        })
+        setMode(latest.mode)
+        setLength(latest.length)
+        setPageState('completed')
+      }
+    } catch {
+      // Ignored: document metadata is already set
+    }
+  }
+
   const handleSummarize = async () => {
     if (!uploadResult) return
     setPageState('processing')
+    setIsComparing(false)
     setErrorMessage(null)
     try {
       const res = await summarizeDocument({
@@ -77,10 +139,51 @@ export default function Home() {
         length,
       })
       setSummaryResult(res)
+      setViewMode('single')
       setPageState('completed')
     } catch (err) {
       setErrorMessage(err.message)
       setPageState('error')
+    }
+  }
+
+  const handleCompareAll = async () => {
+    if (!uploadResult) return
+    setPageState('processing')
+    setIsComparing(true)
+    setErrorMessage(null)
+    try {
+      const res = await compareSummarizeDocument({
+        document_id: uploadResult.document_id,
+        length,
+      })
+      setComparisonResult(res)
+      setViewMode('compare')
+      setPageState('completed')
+    } catch (err) {
+      setErrorMessage(err.message)
+      setPageState('error')
+    } finally {
+      setIsComparing(false)
+    }
+  }
+
+  const handleCompareEvaluate = async (reference, summaries) => {
+    if (!uploadResult) return
+    setIsComparingEval(true)
+    setErrorMessage(null)
+    try {
+      const res = await compareEvaluateDocument({
+        document_id: uploadResult.document_id,
+        reference,
+        length,
+        summaries,
+      })
+      setComparisonMetrics(res.modes)
+    } catch (err) {
+      setErrorMessage(err.message)
+    } finally {
+      setIsComparingEval(false)
     }
   }
 
@@ -110,8 +213,13 @@ export default function Home() {
     setUploadResult(null)
     setSummaryResult(null)
     setEvalMetrics(null)
+    setComparisonResult(null)
+    setComparisonMetrics(null)
+    setViewMode('single')
+    setIsComparing(false)
     setErrorMessage(null)
   }
+
 
   return (
     <div className="space-y-6">
@@ -179,7 +287,16 @@ export default function Home() {
       {/* Main Flow */}
       {pageState === 'idle' || pageState === 'uploading' ? (
         <section className="space-y-4 rounded-xl border border-edge bg-surface p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-ink">Upload Document</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-ink">Upload Document</h3>
+            <button
+              type="button"
+              onClick={() => setIsHistoryOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-accent hover:text-accent"
+            >
+              <span>📁</span> Saved Documents History
+            </button>
+          </div>
           <FileUploader onUpload={handleUpload} isUploading={pageState === 'uploading'} />
         </section>
       ) : null}
@@ -195,13 +312,22 @@ export default function Home() {
                   Document ID: <span className="font-mono text-ink-subtle">{uploadResult.document_id}</span>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:border-edge-strong hover:bg-surface-sunken"
-              >
-                Upload New File
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryOpen(true)}
+                  className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:border-edge-strong hover:bg-surface-sunken"
+                >
+                  📁 History
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:border-edge-strong hover:bg-surface-sunken"
+                >
+                  Upload New File
+                </button>
+              </div>
             </div>
 
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -290,14 +416,14 @@ export default function Home() {
               disabled={pageState === 'processing'}
             />
 
-            <div className="pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleSummarize}
                 disabled={pageState === 'processing'}
                 className="flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-strong disabled:opacity-60"
               >
-                {pageState === 'processing' ? (
+                {pageState === 'processing' && !isComparing ? (
                   <>
                     <svg
                       className="h-4 w-4 animate-spin text-white"
@@ -318,35 +444,140 @@ export default function Home() {
                         d="M4 12a8 8 0 018-8v8H4z"
                       />
                     </svg>
-                    Generating Summary…
+                    Generating {mode.charAt(0).toUpperCase() + mode.slice(1)}…
                   </>
                 ) : (
-                  'Generate Summary'
+                  `Generate ${mode.charAt(0).toUpperCase() + mode.slice(1)} Summary`
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCompareAll}
+                disabled={pageState === 'processing'}
+                className="flex items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50/70 px-5 py-2.5 text-sm font-semibold text-purple-700 shadow-sm transition hover:bg-purple-100 hover:border-purple-400 disabled:opacity-60 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+              >
+                {pageState === 'processing' && isComparing ? (
+                  <>
+                    <svg
+                      className="h-4 w-4 animate-spin text-purple-700 dark:text-purple-300"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      />
+                    </svg>
+                    Generating All 3 Strategies…
+                  </>
+                ) : (
+                  '⚡ Compare All 3 Modes'
                 )}
               </button>
             </div>
           </section>
 
-          {/* Summary Display Panel */}
-          {summaryResult && (
-            <SummaryDisplay
-              summary={summaryResult.summary}
-              mode={summaryResult.mode}
-              length={summaryResult.length}
+          {/* View switcher when results exist */}
+          {(summaryResult || comparisonResult) && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-edge bg-surface px-5 py-3 shadow-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                Active Results View
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('single')}
+                  disabled={!summaryResult}
+                  className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
+                    viewMode === 'single'
+                      ? 'bg-accent text-white shadow-sm'
+                      : 'bg-surface-sunken text-ink-muted hover:text-ink disabled:opacity-40'
+                  }`}
+                >
+                  Single Strategy View {summaryResult ? `(${summaryResult.mode})` : ''}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!comparisonResult) {
+                      handleCompareAll()
+                    } else {
+                      setViewMode('compare')
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
+                    viewMode === 'compare'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/30 dark:text-purple-300'
+                  }`}
+                >
+                  <span>⚡ 3-Way Comparison Matrix</span>
+                  {!comparisonResult && (
+                    <span className="rounded bg-purple-200/60 px-1.5 py-0.5 text-[10px] uppercase font-bold text-purple-800 dark:bg-purple-800 dark:text-purple-200">
+                      Run
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Conditional Display: Single Strategy vs Comparison Matrix */}
+          {viewMode === 'compare' && comparisonResult && (
+            <ComparisonMatrix
+              comparisonData={comparisonResult}
               filename={uploadResult.filename}
+              onEvaluate={handleCompareEvaluate}
+              isEvaluating={isComparingEval}
+              evaluationMetrics={comparisonMetrics}
             />
           )}
 
-          {/* Evaluation Panel */}
-          {summaryResult && (
-            <EvaluationPanel
-              onEvaluate={handleEvaluate}
-              metrics={evalMetrics}
-              isEvaluating={isEvaluating}
-            />
+          {viewMode === 'single' && summaryResult && (
+            <>
+              {/* Summary Display Panel */}
+              <SummaryDisplay
+                summary={summaryResult.summary}
+                mode={summaryResult.mode}
+                length={summaryResult.length}
+                filename={uploadResult.filename}
+                documentId={uploadResult.document_id}
+                analytics={summaryResult.analytics}
+              />
+
+              {/* Evaluation Panel */}
+              <EvaluationPanel
+                onEvaluate={handleEvaluate}
+                metrics={evalMetrics}
+                isEvaluating={isEvaluating}
+              />
+            </>
           )}
+
+          {/* Interactive Document Q&A (RAG Assistant) */}
+          <DocumentChat
+            documentId={uploadResult.document_id}
+            filename={uploadResult.filename}
+          />
         </>
       )}
+
+      {/* Persistent History Drawer */}
+      <HistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        onSelectDocument={handleSelectFromHistory}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-# AI Document Summarization — Project Concepts & Plain-English Guide
+﻿# AI Document Summarization ΓÇö Project Concepts & Plain-English Guide
 
 > **MCA Minor Project Explanation & Viva Guide**  
 > This document explains what this application does, how its algorithms work, and key concepts in plain, non-jargon language suitable for project reports and viva examinations.
@@ -20,15 +20,15 @@ Finally, if you provide a human-written reference summary, the application calcu
 ## 2. The 5-Step Pipeline (End-to-End Flow)
 
 ```
-┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│  1. Ingestion   │ ───► │  2. Cleaning    │ ───► │   3. Chunking   │
-│  Extract / OCR  │      │ Reflow & Strip  │      │ Token Overlap   │
-└─────────────────┘      └─────────────────┘      └────────┬────────┘
-                                                           │
-┌─────────────────┐      ┌─────────────────┐               │
-│  5. Evaluation  │ ◄─── │ 4. Summarize    │ ◄─────────────┘
-│  ROUGE & BLEU   │      │ Ext/Abs/Hybrid  │
-└─────────────────┘      └─────────────────┘
+ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ
+Γöé  1. Ingestion   Γöé ΓöÇΓöÇΓöÇΓû║ Γöé  2. Cleaning    Γöé ΓöÇΓöÇΓöÇΓû║ Γöé   3. Chunking   Γöé
+Γöé  Extract / OCR  Γöé      Γöé Reflow & Strip  Γöé      Γöé Token Overlap   Γöé
+ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö¼ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ
+                                                           Γöé
+ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ               Γöé
+Γöé  5. Evaluation  Γöé ΓùäΓöÇΓöÇΓöÇ Γöé 4. Summarize    Γöé ΓùäΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ
+Γöé  ROUGE & BLEU   Γöé      Γöé Ext/Abs/Hybrid  Γöé
+ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ
 ```
 
 ---
@@ -37,7 +37,7 @@ Finally, if you provide a human-written reference summary, the application calcu
 
 ### Concept 1: Text Extraction & OCR Fallback
 * **Digital PDF / DOCX / TXT**: Digital files already contain text characters inside their code structure. We extract this directly using libraries (`PyMuPDF` for PDF, `python-docx` for DOCX).
-* **Scanned PDF (Image PDF)**: A scanned document is just a picture of paper — it has no text characters inside.
+* **Scanned PDF (Image PDF)**: A scanned document is just a picture of paper ΓÇö it has no text characters inside.
 * **Optical Character Recognition (OCR)**: When the system detects an image-only PDF page, it automatically passes that page to **Tesseract OCR**, which reads the visual letters in the image and converts them into editable text characters.
 
 ---
@@ -47,7 +47,7 @@ Raw extracted text from PDFs is often messy (line breaks in the middle of senten
 
 Before summarization, `cleaning_service` performs 4 clean-ups:
 1. **Header/Footer Removal**: Detects short lines that repeat across multiple pages and strips them out.
-2. **De-hyphenation**: Rejoins broken words (e.g., `summa-` ⏎ `rization` becomes `summarization`).
+2. **De-hyphenation**: Rejoins broken words (e.g., `summa-` ΓÅÄ `rization` becomes `summarization`).
 3. **Paragraph Reflow**: Merges single line-wraps into continuous prose paragraphs.
 4. **Character Normalization**: Replaces fancy quotes or ligatures with standard characters.
 
@@ -55,7 +55,7 @@ Before summarization, `cleaning_service` performs 4 clean-ups:
 
 ### Concept 3: Sentence Segmentation & Chunking
 * **The Token Limit Problem**: Language models like **BART** have a hard limit of **1024 tokens** (~750 words). They cannot read a 50-page PDF in a single pass.
-* **Sentence-Aware Chunking**: We split long documents into smaller slices (chunks). Slices are strictly cut at sentence boundaries—never in the middle of a sentence—so the AI doesn't receive cut-off fragments.
+* **Sentence-Aware Chunking**: We split long documents into smaller slices (chunks). Slices are strictly cut at sentence boundariesΓÇönever in the middle of a sentenceΓÇöso the AI doesn't receive cut-off fragments.
 * **Overlapping Seams**: Consecutive chunks share 1-2 overlapping sentences at their boundary so that important facts spanning across two chunks aren't lost.
 
 ---
@@ -69,20 +69,20 @@ Before summarization, `cleaning_service` performs 4 clean-ups:
   3. It builds a network graph where sentences are nodes and edge weights are similarity scores.
   4. It runs **PageRank** (TextRank) on the graph. A sentence scores high if it is semantically similar to *many other sentences* in the document.
   5. Top-ranked sentences are selected and placed back in their original document order.
-* **Key Trait**: **Zero Hallucination** — quotes exact words from the source. Cannot invent false facts.
+* **Key Trait**: **Zero Hallucination** ΓÇö quotes exact words from the source. Cannot invent false facts.
 
 #### B. Abstractive Summarization (BART + Map-Reduce)
 * **How it works**: Uses `facebook/bart-large-cnn`, a Sequence-to-Sequence (Seq2Seq) Transformer neural network.
 * **Map-Reduce for Long Texts**:
   * **Map**: Splits long document into overlapping chunks and generates a partial summary for each chunk.
   * **Reduce**: Combines all partial summaries together and condenses them into one final summary.
-* **Key Trait**: **Fluent Rewriting** — creates new, natural sentences that synthesize complex concepts.
+* **Key Trait**: **Fluent Rewriting** ΓÇö creates new, natural sentences that synthesize complex concepts.
 
 #### C. Hybrid Summarization (TextRank Filter $\rightarrow$ BART Condensation)
 * **How it works**:
   1. Step 1: Uses TextRank to identify and extract the top 50% most important sentences in the document.
   2. Step 2: Feeds only those top sentences into BART to generate a condensed abstractive summary.
-* **Key Trait**: **Best of Both Worlds** — keeps BART focused only on factual, core sentences, greatly reducing hallucination risk while maintaining smooth, human-like readability.
+* **Key Trait**: **Best of Both Worlds** ΓÇö keeps BART focused only on factual, core sentences, greatly reducing hallucination risk while maintaining smooth, human-like readability.
 
 ---
 
@@ -92,10 +92,10 @@ When evaluating AI summaries against a human reference summary:
 
 | Metric | Full Form | What It Measures | Scale |
 |---|---|---|---|
-| **ROUGE-1** | Recall-Oriented Understudy for Gisting Evaluation | Single word (unigram) overlap between AI summary and human reference. | 0.0 – 1.0 (Higher is better) |
-| **ROUGE-2** | Bigram Overlap | Two-word sequence overlap; measures local phrase accuracy. | 0.0 – 1.0 (Higher is better) |
-| **ROUGE-L** | Longest Common Subsequence | Longest matching sequence of words; measures sentence structure similarity. | 0.0 – 1.0 (Higher is better) |
-| **BLEU** | Bilingual Evaluation Understudy | N-gram precision with brevity penalty; measures translation/generation quality. | 0 – 100 (Higher is better) |
+| **ROUGE-1** | Recall-Oriented Understudy for Gisting Evaluation | Single word (unigram) overlap between AI summary and human reference. | 0.0 ΓÇô 1.0 (Higher is better) |
+| **ROUGE-2** | Bigram Overlap | Two-word sequence overlap; measures local phrase accuracy. | 0.0 ΓÇô 1.0 (Higher is better) |
+| **ROUGE-L** | Longest Common Subsequence | Longest matching sequence of words; measures sentence structure similarity. | 0.0 ΓÇô 1.0 (Higher is better) |
+| **BLEU** | Bilingual Evaluation Understudy | N-gram precision with brevity penalty; measures translation/generation quality. | 0 ΓÇô 100 (Higher is better) |
 
 ---
 

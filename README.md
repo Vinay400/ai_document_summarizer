@@ -1,20 +1,50 @@
 # AI Document Summarization
 
-**An Intelligent Extractive, Abstractive, and Hybrid Summarization Platform for Long-Form Documents**
+**An Intelligent Extractive, Abstractive, and Hybrid Summarization Platform for Long-Form Documents with RAG Q&A, Hallucination Guardrails, and Readability Analytics**
 
-MCA Major Project — a full-stack application that ingests PDF, DOCX and TXT
-documents, cleans and chunks the text, and produces summaries using three
-complementary strategies, with ROUGE and BLEU evaluation against a reference
-summary.
+A production-grade, full-stack application that ingests PDF, DOCX, and TXT documents (with automatic OCR for scanned pages), cleans and chunks the text, and produces summaries using three distinct strategies. Features interactive Retrieval-Augmented Generation (RAG) Q&A, semantic hallucination detection, Flesch-Kincaid readability scoring, persistent SQLite history, and ROUGE/BLEU evaluation.
 
-📖 **[Plain-English Project Overview & Viva Guide](PROJECT_CONCEPTS.md)**
-
+📘 **[Plain-English Project Overview & Viva Guide](PROJECT_CONCEPTS.md)**
 
 ---
 
-## Status
+## Key Features
 
-The project is built in phases. Current progress:
+1. **Three Complementary Summarization Strategies**:
+   * **Extractive**: Dense sentence embeddings (`all-MiniLM-L6-v2`) + Cosine Similarity Graph + TextRank (PageRank). Zero hallucination guarantee.
+   * **Abstractive**: Sequence-to-sequence Transformer (`facebook/bart-large-cnn`) with sentence-aware Map-Reduce chunking for documents exceeding token limits.
+   * **Hybrid**: Two-stage pipeline where TextRank filters out low-information sentences before BART condenses the core concepts into fluent prose.
+   * **3-Way Comparison Matrix**: Run all three strategies simultaneously to compare word counts, compression ratios, latency, and outputs side-by-side.
+
+2. **Explainable AI & Factuality / Hallucination Guardrail**:
+   * Evaluates each generated summary sentence against source document sentences using semantic embeddings.
+   * Computes an overall **Factuality Confidence %** and assigns a **Hallucination Risk Level** (Low / Medium / High).
+   * **Interactive Source Alignment**: Maps and visualizes which source sentence served as the factual anchor for each generated statement.
+
+3. **Readability & Efficiency Analytics**:
+   * Calculates **Flesch Reading Ease** ($0\text{--}100$) and **Flesch-Kincaid Grade Level** before and after summarization.
+   * Quantifies real-world efficiency by reporting exact **Reading Time Saved (seconds and %)**.
+   * Extracts top **Keyphrases and Topical Hashtags** from the document.
+
+4. **Interactive Document Q&A (RAG Assistant)**:
+   * Ask free-form questions about uploaded documents.
+   * Semantic passage retrieval matches question embeddings against document passages and synthesizes grounded answers with verifiable source citations.
+
+5. **Persistent Document & Summary History**:
+   * Built-in zero-dependency SQLite store (`uploads/history.db`) automatically archives documents, generated summaries, analytics, and ROUGE/BLEU scores.
+   * Slide-out History Drawer allows reloading past documents and summaries instantly.
+
+6. **Executive Summary Export**:
+   * One-click download of a publication-ready **Executive Summary Brief** (formatted HTML/PDF or Markdown) complete with key topics, summary text, and analytical metrics.
+
+7. **Production Document Pipeline & OCR**:
+   * Ingests native PDF, DOCX (paragraphs and tables), and TXT files.
+   * Automatically detects scanned image-only PDF pages and routes them to Tesseract OCR.
+   * Automated text cleaning: de-hyphenation across line breaks, header/footer removal, and paragraph reflow.
+
+---
+
+## Project Status
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -24,303 +54,174 @@ The project is built in phases. Current progress:
 | 4 | Preprocessing — cleaning, sentence segmentation, chunking | ✅ Complete |
 | 5 | Extractive summarization — embeddings + TextRank | ✅ Complete |
 | 6 | Abstractive summarization — transformer + map-reduce | ✅ Complete |
-| 7 | Hybrid summarization | ✅ Complete |
-| 8 | Evaluation — ROUGE-1/2/L, BLEU | ✅ Complete |
-| 9 | Frontend — upload, selectors, progress, summary, evaluation | ✅ Complete |
-| 10 | Testing and error handling | ✅ Complete |
-| 11 | Documentation | ✅ Complete |
-| 12 | Docker / deployment (only after everything works locally) | ⏳ |
+| 7 | Hybrid summarization — TextRank filter $\rightarrow$ BART condensation | ✅ Complete |
+| 8 | Evaluation — ROUGE-1/2/L, BLEU against reference | ✅ Complete |
+| 9 | Frontend — modern UI, comparison matrix, text-to-speech audio | ✅ Complete |
+| 10 | Testing & Quality Assurance — 97 automated tests across modules | ✅ Complete |
+| 11 | Analytics & Explainability — Readability, Keyphrases, Hallucination Guardrail | ✅ Complete |
+| 12 | Interactive RAG Assistant — Retrieval-augmented document Q&A with citations | ✅ Complete |
+| 13 | Persistence & History — SQLite store for documents and summaries | ✅ Complete |
+| 14 | Deployment & Packaging — 1-Click Launchers and Docker Compose orchestration | ✅ Complete |
 
 ---
 
 ## Architecture
 
 ```
-React (Vite, :5173)
-      │  axios, JSON — cross-origin, so CORS is configured on the API
-      ▼
-FastAPI (:8000) /api/{upload,summarize,evaluate,health}
-      │
-      ├── api/          validate request → call service → shape response
-      │
-      └── services/
-            document_service ──► PyMuPDF | python-docx | plain read
-                  ├── ocr_service      ► Tesseract (scanned pages only)
-                  ├── cleaning_service ► normalise, de-hyphenate, strip headers/footers
-                  └── chunking_service ► sentence-aware, overlapping chunks
-                                             │
-              ┌──────────────────────────────┼──────────────────────────────┐
-              ▼                              ▼                              ▼
-      extractive_service            abstractive_service            hybrid_service
-      MiniLM embeddings →           BART; map-reduce over          TextRank filter →
-      cosine similarity →           chunks for long docs           BART condenses
-      TextRank → top-k sentences
-              └──────────────────────────────┼──────────────────────────────┘
-                                             ▼
-                                  evaluation_service — ROUGE-1/2/L, BLEU
+React Frontend (Vite, :5173)
+       │  axios HTTP JSON (CORS enabled)
+       ▼
+FastAPI Backend (:8000) /api/{upload, summarize, evaluate, chat, history, export}
+       │
+       ├─► api/             Request validation, router dispatch, response schemas
+       │
+       ├─► services/
+       │     document_service ──► PyMuPDF | python-docx | plain text read
+       │           ├─► ocr_service         ──► Tesseract OCR (scanned pages only)
+       │           ├─► cleaning_service    ──► Normalise, de-hyphenate, strip headers/footers
+       │           └─► chunking_service    ──► Sentence-aware, overlapping chunks
+       │
+       │     ┌─────────────────────┼─────────────────────┐
+       │     ▼                     ▼                     ▼
+       │ extractive_service   abstractive_service   hybrid_service
+       │ MiniLM embeddings    BART Map-Reduce       TextRank filter ──► BART condenses
+       │ Cosine TextRank      for long docs
+       │     └─────────────────────┼─────────────────────┘
+       │                           ▼
+       │     analytics_service   ──► Flesch Readability, Keyphrases, Hallucination Check
+       │     qa_service          ──► Semantic passage retrieval & RAG Q&A
+       │     evaluation_service  ──► ROUGE-1/2/L & BLEU metrics
+       │     history_service     ──► SQLite persistent archive (history.db)
 ```
-
-### Design decisions
-
-* **`api/` vs `services/` separation.** Routers hold no algorithms. Every
-  summarizer and preprocessor is a plain function that can be unit-tested
-  without an HTTP server.
-* **Server-side document store.** `/api/upload` extracts text once and returns
-  only a `document_id` plus metadata; `/api/summarize` sends the ID, never the
-  full text. The client never re-uploads a 20 MB PDF to switch modes.
-* **Models are process-level singletons.** The Sentence-Transformers and BART
-  models are loaded once via a cached registry, not per request — reloading BART
-  per request would add ~10 s to every call.
-* **Chunking exists because of model limits.** BART accepts 1024 tokens; longer
-  documents must be split, summarized chunk-by-chunk (map) and then condensed
-  (reduce).
 
 ---
 
-## Tech stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, Vite 8, Tailwind CSS v4, axios |
-| Backend | Python 3.11, FastAPI, Uvicorn, Pydantic v2 |
-| Extraction | PyMuPDF (fitz), python-docx |
-| OCR | Tesseract via pytesseract, Pillow |
-| ML / NLP | sentence-transformers, transformers (BART), torch, networkx, scikit-learn, NLTK |
-| Evaluation | rouge-score, sacreBLEU |
-| Data | pandas, NumPy |
-| Testing | pytest, httpx |
+| **Frontend** | React 19, Vite 8, Tailwind CSS v4, Axios, Web Speech API |
+| **Backend** | Python 3.11, FastAPI, Uvicorn, Pydantic v2 |
+| **Database** | SQLite3 (built-in persistent storage) |
+| **Extraction & OCR** | PyMuPDF (fitz), python-docx, Tesseract OCR, Pillow |
+| **ML / NLP** | `sentence-transformers` (`all-MiniLM-L6-v2`), `transformers` (`facebook/bart-large-cnn`), PyTorch, NetworkX, Scikit-learn, NLTK |
+| **Evaluation** | `rouge-score`, `sacrebleu` |
+| **Deployment** | Docker, Docker Compose, Nginx |
+| **Testing** | pytest, httpx |
 
 ---
 
-## Folder structure
+## Folder Structure
 
 ```
 ai-document-summarization/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py            # app factory, CORS, error handlers
-│   │   ├── config.py          # settings from env / .env
-│   │   ├── api/               # HTTP endpoints
-│   │   ├── services/          # business logic
-│   │   ├── models/schemas.py  # request / response contracts
-│   │   └── utils/             # text and file helpers
-│   ├── tests/
-│   ├── requirements.txt
-│   └── README.md
+│   │   ├── main.py              # FastAPI app factory, CORS, routers
+│   │   ├── config.py            # Settings from environment / .env
+│   │   ├── api/                 # Endpoints (upload, summarize, evaluate, chat, history)
+│   │   ├── services/            # Algorithms (extractive, abstractive, hybrid, analytics, qa, history)
+│   │   ├── models/schemas.py    # Pydantic request/response contracts
+│   │   └── utils/               # Text and file helper utilities
+│   ├── tests/                   # Automated unit & integration tests
+│   ├── Dockerfile               # Container definition for backend
+│   └── requirements.txt         # Python dependencies
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── pages/Home.jsx
-│   │   ├── services/api.js
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
-│   ├── package.json
-│   └── README.md
-├── docs/                      # architecture, api, methodology, evaluation
-├── uploads/                   # transient uploaded documents (gitignored)
-├── outputs/                   # generated summaries (gitignored)
-├── .env.example
+│   │   ├── components/          # React components (SummaryDisplay, DocumentChat, HistoryDrawer, etc.)
+│   │   ├── pages/Home.jsx       # Main single-page application workflow
+│   │   └── services/api.js      # Backend API client wrapper
+│   ├── Dockerfile               # Multi-stage Node/Nginx container definition
+│   ├── nginx.conf               # Nginx reverse proxy configuration
+│   └── package.json
+├── docs/                        # Architecture, API, and methodology documentation
+├── uploads/                     # Server-side document storage & history.db (gitignored)
+├── outputs/                     # Output directory (gitignored)
+├── docker-compose.yml           # One-click multi-container deployment
+├── run_backend.bat / .ps1       # 1-Click launcher for backend on Windows
+├── run_frontend.bat / .ps1      # 1-Click launcher for frontend on Windows
+├── PROJECT_CONCEPTS.md          # Plain-English viva questions & concept guide
 └── README.md
 ```
 
 ---
 
-## Installation
+## Quick Start (How to Run)
 
-### Prerequisites
+### Method 1: 1-Click Windows Launchers (Recommended)
 
-* **Python 3.11** (recommended for ML wheel availability) — `py -3.11 --version`
-* **Node.js 20.19+ or 22.12+** — `node --version`
-* **Tesseract OCR** — required from Phase 3 onwards.
+Simply double-click the starter scripts in the project root:
 
-#### Installing Tesseract on Windows
-
-1. Download the installer from
-   <https://github.com/UB-Mannheim/tesseract/wiki> (e.g. `tesseract-ocr-w64-setup-5.x.exe`).
-2. Install to the default location: `C:\Program Files\Tesseract-OCR`.
-3. Either add that folder to `PATH`, or set `TESSERACT_CMD` in `.env`:
-   ```
-   TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
-   ```
-4. Verify: `tesseract --version`
-
-*Linux:* `sudo apt install tesseract-ocr` · *macOS:* `brew install tesseract`
-
-> The Windows installer (including the winget package `UB-Mannheim.TesseractOCR`)
-> does **not** reliably add Tesseract to `PATH`. If `tesseract --version` works in
-> a terminal but the app still reports `ocr.available: false`, set `TESSERACT_CMD`
-> in `.env` — that is the deterministic fix, and it is what this project uses.
-
-#### OCR is optional, but needed for scanned PDFs
-
-Tesseract is an external program — `pip install pytesseract` installs only the
-Python wrapper, so the phase 3 code runs either way:
-
-* **Without it**, digital PDFs, DOCX and TXT work normally. A scanned upload is
-  rejected with a message naming the fix, and `GET /api/health` reports
-  `ocr.available: false` so the front-end can warn before an upload is attempted.
-* **With it**, OCR runs *only* on pages whose text layer is empty (fewer than
-  `OCR_MIN_CHARS_PER_PAGE` characters) — never on a page that already has text,
-  so ordinary PDFs pay nothing for this. Partly scanned documents keep their
-  digital pages and have the image pages filled in, and each extraction reports
-  which route it took via `extraction_method` and `warnings`.
-
-OCR runs at `OCR_DPI` (default 200); the Tesseract default of 72 DPI misreads
-small text. `OCR_LANGUAGE` selects the language pack.
-
-### What cleaning does
-
-Extraction returns what the file literally contains — a PDF page is a grid of
-lines — so `cleaning_service` turns that back into prose before anything is
-stored:
-
-| Step | Effect |
-|---|---|
-| Character normalisation | Ligatures, curly quotes, en/em dashes and non-breaking spaces folded to ASCII, so a summary matches a reference summary written with plain characters |
-| Page numbers | `Page 12`, `12 of 30`, `- 12 -` removed; a *lone* bare number is kept, since it is more likely a year or a table cell than a page number |
-| Headers / footers | A short line repeating `HEADER_MIN_REPEATS` times is boilerplate and removed |
-| De-hyphenation | `summa-` ⏎ `rization` → `summarization`; a hyphen before a capital is kept, as in `State-Of-The-Art` |
-| Reflow | Wrapped lines rejoin into paragraphs; blank lines stay as paragraph breaks |
-
-It is deliberately conservative — deleting content is a worse failure than
-keeping a stray footer — so a repeated *sentence* is never treated as a header,
-however often the document repeats it. `POST /api/upload` reports what changed
-under `cleaning`, and `GET /api/health` is unaffected.
-
-Chunking then splits the cleaned text for models with a token limit. Chunks are
-sentence-aligned and overlap so a fact spanning a boundary is not lost. The
-overlap always includes the sentence at the boundary, even if that exceeds
-`CHUNK_OVERLAP` slightly: a sentence stopping short of the seam would duplicate
-text already fully contained in the previous chunk without bridging anything.
-
-### Environment
-
-```bash
-cp .env.example .env                    # root: backend settings
-cp frontend/.env.example frontend/.env  # frontend: API base URL
-```
-
-### Backend
-
-```bash
-cd backend
-py -3.11 -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements.txt
-
-# One-off: NLTK's sentence-tokenizer data. `pip install nltk` ships the library
-# but not the models, so this download is a separate step.
-.venv/Scripts/python.exe -c "import nltk; nltk.download('punkt_tab')"
-```
-
-**NLTK data is optional.** Without it the pipeline falls back to a built-in
-regex sentence splitter that handles abbreviations and decimals. Punkt is better
-on complex prose, so the download is worth doing. `GET /api/health` does not
-report this, but `chunking_service.sentence_tokenizer()` returns `'nltk-punkt'`
-or `'regex'`.
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-```
+1. **Backend**: Double-click `run_backend.bat` (or execute `.\run_backend.ps1` in PowerShell).
+2. **Frontend**: Double-click `run_frontend.bat` (or execute `.\run_frontend.ps1` in PowerShell).
 
 ---
 
-## Running the project
+### Method 2: Manual Terminal Commands
 
-Two terminals.
+#### Terminal 1 — Backend (FastAPI)
 
-**Terminal 1 — backend**
-```bash
+```powershell
 cd backend
-.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
-**Terminal 2 — frontend**
-```bash
+> **Note for Windows PowerShell:** Use a semicolon (`;`) rather than `&&` if running as a single line:  
+> `cd backend; .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000`
+
+* **Backend URL**: [http://localhost:8000](http://localhost:8000)
+* **Interactive API Docs (Swagger UI)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+#### Terminal 2 — Frontend (React / Vite)
+
+```powershell
 cd frontend
 npm run dev
 ```
 
-Open <http://localhost:5173>. The home page probes `GET /api/health` and shows
-a green "Backend connected" panel when the two halves are talking.
-
-> **Heads-up:** the first run downloads models — ~90 MB for `all-MiniLM-L6-v2`
-> and ~1.6 GB for `facebook/bart-large-cnn`. They are cached afterwards.
+* **Frontend Web UI**: [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## API endpoints
+### Method 3: Run with Docker Compose
 
-| Method | Path | Purpose | Phase |
-|---|---|---|---|
-| `GET` | `/api/health` | Liveness probe, runtime info, OCR availability | 1, 3 |
-| `POST` | `/api/upload` | Upload PDF/DOCX/TXT, extract, OCR if needed, clean | 2–4 |
-| `POST` | `/api/summarize` | Generate a summary for an uploaded document | 5–7 |
-| `POST` | `/api/evaluate` | ROUGE-1/2/L and BLEU against a reference | 8 |
-
-`POST /api/upload` returns metadata only — never the text. Alongside the counts
-and `extraction_method` it reports `ocr_used`, any `warnings` (image-only pages,
-OCR recognition caveats), the `cleaning` counts, and `chunk_count`: how many
-chunks the document would be split into at the current `CHUNK_SIZE`.
-
-Full reference: [`docs/api.md`](docs/api.md) (Phase 11).
-
----
-
-## Testing
+If you have Docker Desktop installed, build and launch the entire platform with one command:
 
 ```bash
-cd backend
-.venv/Scripts/python.exe tests/make_fixtures.py   # once: generates tests/fixtures/
-.venv/Scripts/python.exe -m pytest tests -v
+docker compose up --build
 ```
 
-The suite covers extraction for all four input kinds, cleaning, sentence
-segmentation, chunking, the OCR fallback and the upload endpoint.
+---
 
-Two techniques keep it portable, since both external pieces are optional. OCR
-orchestration (which pages are rendered, how results are merged, what happens
-when Tesseract dies mid-document) is tested with the recognition step stubbed,
-so it runs on every machine; only the two tests asserting real recognition
-quality skip without Tesseract. In the same way, punkt's split behaviour is
-tested by calling the repair function on synthetic output, so those assertions
-hold whether or not the NLTK data is installed.
+## API Endpoints Reference
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/health` | Service liveness probe, runtime versions, and OCR status |
+| `POST` | `/api/upload` | Upload PDF/DOCX/TXT; extracts, cleans, OCRs if needed, returns `document_id` |
+| `POST` | `/api/summarize` | Generate single-mode summary with readability and factuality analytics |
+| `POST` | `/api/summarize/compare` | Generate summaries for all 3 strategies simultaneously for side-by-side comparison |
+| `POST` | `/api/evaluate` | Compute ROUGE-1/2/L and BLEU scores against a reference summary |
+| `POST` | `/api/evaluate/compare` | Evaluate all 3 modes against a reference summary |
+| `POST` | `/api/chat` | Interactive RAG Q&A: answer questions with document source citations |
+| `GET` | `/api/history` | List all historical documents, word counts, and summary statistics |
+| `GET` | `/api/history/{id}` | Retrieve document details, all saved summaries, and evaluation runs |
+| `DELETE`| `/api/history/{id}` | Delete a document and its associated records from SQLite history |
+| `POST` | `/api/export/brief` | Export a formatted Executive Summary Report (HTML & Markdown) |
 
 ---
 
-## Limitations
+## Running the Automated Test Suite
 
-* Abstractive summaries can hallucinate facts not present in the source; the
-  hybrid mode exists specifically to constrain generation to extractively
-  selected content.
-* OCR accuracy depends on scan quality, and a summary of a scanned document
-  inherits Tesseract's recognition errors. Extracted text is not corrected or
-  spell-checked.
-* Cleaning removes only *exactly* repeated headers and footers. A footer whose
-  text changes on every page (`Report 2024 - page 3`) survives, because masking
-  the digits to catch it would also delete genuinely numbered short lines such
-  as a run of table captions. Removing a real line is worse than keeping a
-  footer.
-* Sentence segmentation is heuristic. It handles the common abbreviations,
-  initials, decimals and dotted forms, but an unusual abbreviation can still be
-  mistaken for a sentence end — and extractive summarization quotes sentences
-  verbatim, so a bad split shows up directly in the output.
-* ROUGE and BLEU are **reference-based** metrics — they cannot be computed
-  without a reference summary, so evaluation is optional and user-supplied.
-* Transformer inference runs on CPU by default; long documents take minutes.
+The test suite covers document extraction, OCR orchestration, cleaning heuristics, sentence segmentation, chunking, extractive/abstractive pipelines, RAG Q&A, analytics, and SQLite persistence:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m pytest tests -v
+```
 
 ---
 
-## Future scope
+## License & Academic Disclaimer
 
-* Summary history backed by SQLite/PostgreSQL
-* GPU inference and quantized models
-* Multi-document and query-focused summarization
-* Multilingual OCR and summarization
-* Export to DOCX/PDF alongside TXT
-#   a i _ d o c u m e n t _ s u m m a r i z e r  
- #   a i _ d o c u m e n t _ s u m m a r i z e r  
- 
+Developed as an **MCA Major Project**. Built using open-source libraries and pretrained models from Hugging Face and Sentence-Transformers.

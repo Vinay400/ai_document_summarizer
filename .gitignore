@@ -30,7 +30,8 @@ outputs/*
 
 # ---------------- Model caches (downloaded at first run) ----------------
 .cache/
-models/
+/models/
+!backend/app/models/
 *.safetensors
 *.bin
 
