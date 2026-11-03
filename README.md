@@ -4,10 +4,6 @@
 
 A production-grade, full-stack application that ingests PDF, DOCX, and TXT documents (with automatic OCR for scanned pages), cleans and chunks the text, and produces summaries using three distinct strategies. Features interactive Retrieval-Augmented Generation (RAG) Q&A, semantic hallucination detection, Flesch-Kincaid readability scoring, persistent SQLite history, and ROUGE/BLEU evaluation.
 
-📘 **[Plain-English Project Overview & Viva Guide](PROJECT_CONCEPTS.md)**
-
----
-
 ## Key Features
 
 1. **Three Complementary Summarization Strategies**:
