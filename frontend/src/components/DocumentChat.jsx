@@ -61,40 +61,43 @@ export default function DocumentChat({ documentId, filename }) {
   }
 
   return (
-    <section className="rounded-xl border border-edge bg-surface shadow-sm">
+    <section className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+      {/* Header Accordion */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between p-6 text-left transition hover:bg-surface-sunken/40"
+        className="flex w-full items-center justify-between p-5 sm:p-6 text-left transition hover:bg-slate-50/70"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-            💬
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+            </svg>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-ink">
+              <h3 className="text-base font-bold text-slate-900">
                 Ask Document (Interactive RAG Assistant)
               </h3>
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+              <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 ring-1 ring-inset ring-blue-700/20">
                 Retrieval-Augmented
               </span>
             </div>
-            <p className="mt-0.5 text-xs text-ink-muted">
-              Verify facts and ask custom questions directly grounded in {filename || 'the document'}
+            <p className="mt-0.5 text-xs text-slate-500">
+              Verify facts and query {filename || 'the document'} with exact source evidence
             </p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-accent">
+        <span className="text-xs font-bold text-indigo-600">
           {isOpen ? '▲ Collapse' : '▼ Expand'}
         </span>
       </button>
 
       {isOpen && (
-        <div className="space-y-4 border-t border-edge p-6">
-          {/* Suggested Quick Questions */}
+        <div className="space-y-4 border-t border-slate-100 p-5 sm:p-6 bg-slate-50/30">
+          {/* Quick Prompts */}
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Suggested Questions
             </p>
             <div className="flex flex-wrap gap-2">
@@ -104,7 +107,7 @@ export default function DocumentChat({ documentId, filename }) {
                   type="button"
                   disabled={isLoading}
                   onClick={() => handleAsk(sq)}
-                  className="rounded-lg border border-edge bg-surface-sunken px-2.5 py-1 text-xs text-ink transition hover:border-accent hover:text-accent disabled:opacity-50"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs transition hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/30 disabled:opacity-50 active:scale-95"
                 >
                   {sq}
                 </button>
@@ -112,9 +115,9 @@ export default function DocumentChat({ documentId, filename }) {
             </div>
           </div>
 
-          {/* Conversation History */}
+          {/* Conversation History Area */}
           {messages.length > 0 && (
-            <div className="max-h-80 space-y-3 overflow-y-auto rounded-lg border border-edge bg-surface-sunken p-4">
+            <div className="max-h-96 space-y-3.5 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-inner">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -123,46 +126,46 @@ export default function DocumentChat({ documentId, filename }) {
                   }`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-lg p-3 text-sm shadow-xs ${
+                    className={`max-w-[85%] rounded-2xl p-3.5 text-sm ${
                       msg.sender === 'user'
-                        ? 'bg-accent text-white'
+                        ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-br-none shadow-xs'
                         : msg.isError
-                        ? 'border border-red-200 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-                        : 'border border-edge bg-surface text-ink'
+                        ? 'border border-rose-200 bg-rose-50 text-rose-700 rounded-bl-none'
+                        : 'border border-slate-200 bg-slate-50/80 text-slate-800 rounded-bl-none shadow-2xs'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                    <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
 
-                    {/* Metadata & Confidence for Bot Responses */}
+                    {/* Metadata & Relevance Score for Bot */}
                     {msg.sender === 'assistant' && !msg.isError && (
-                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-edge/60 pt-2 text-[11px] text-ink-muted">
-                        <span className="flex items-center gap-1 font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/80 pt-2 text-[11px] text-slate-500">
+                        <span className="font-mono font-bold text-emerald-600">
                           ✓ {msg.confidence}% Relevance
                         </span>
                         {msg.sources && msg.sources.length > 0 && (
                           <button
                             type="button"
                             onClick={() => toggleSources(idx)}
-                            className="font-medium text-accent hover:underline"
+                            className="font-bold text-indigo-600 hover:text-indigo-800 transition"
                           >
                             {expandedSources[idx]
-                              ? 'Hide Citations ▲'
-                              : `View Citations (${msg.sources.length}) ▼`}
+                              ? 'Hide Evidence ▲'
+                              : `View Retrieved Evidence (${msg.sources.length}) ▼`}
                           </button>
                         )}
                       </div>
                     )}
 
-                    {/* Expandable Citations */}
+                    {/* Expandable Evidence Snippets */}
                     {expandedSources[idx] && msg.sources && (
-                      <div className="mt-2 space-y-1.5 border-t border-edge/60 pt-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle">
-                          Retrieved Source Evidence:
+                      <div className="mt-2.5 space-y-1.5 border-t border-slate-200 pt-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Context Passages from Source:
                         </p>
                         {msg.sources.map((src, sIdx) => (
                           <blockquote
                             key={sIdx}
-                            className="rounded border-l-2 border-accent bg-surface-sunken p-2 text-xs italic text-ink-muted"
+                            className="rounded-lg border-l-2 border-indigo-500 bg-white p-2.5 text-xs italic text-slate-600 shadow-2xs"
                           >
                             &ldquo;{src}&rdquo;
                           </blockquote>
@@ -172,18 +175,21 @@ export default function DocumentChat({ documentId, filename }) {
                   </div>
                 </div>
               ))}
+
               {isLoading && (
-                <div className="flex items-center gap-2 text-xs text-ink-muted">
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-accent" />
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-accent delay-100" />
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-accent delay-200" />
-                  <span>Searching document context and formulating answer…</span>
+                <div className="flex items-center gap-2.5 text-xs text-slate-500 py-1">
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 rounded-full bg-indigo-600 animate-bounce" />
+                    <span className="h-2 w-2 rounded-full bg-indigo-600 animate-bounce delay-100" />
+                    <span className="h-2 w-2 rounded-full bg-indigo-600 animate-bounce delay-200" />
+                  </div>
+                  <span>Searching document context and formulating answer&hellip;</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Question Input Form */}
+          {/* Input Form */}
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -197,12 +203,12 @@ export default function DocumentChat({ documentId, filename }) {
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Ask anything about this document..."
               disabled={isLoading}
-              className="flex-1 rounded-lg border border-edge bg-surface-sunken px-3.5 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-accent focus:bg-surface focus:outline-none"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-2xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
             <button
               type="submit"
               disabled={isLoading || !question.trim()}
-              className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-accent-strong disabled:opacity-50"
+              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-50 active:scale-95"
             >
               {isLoading ? 'Searching…' : 'Ask'}
             </button>
@@ -210,7 +216,7 @@ export default function DocumentChat({ documentId, filename }) {
               <button
                 type="button"
                 onClick={() => setMessages([])}
-                className="rounded-lg border border-edge bg-surface px-3 py-2 text-xs font-medium text-ink-muted transition hover:bg-surface-sunken hover:text-ink"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-500 shadow-2xs transition hover:bg-slate-50 hover:text-slate-700"
                 title="Clear conversation"
               >
                 Clear
@@ -222,4 +228,3 @@ export default function DocumentChat({ documentId, filename }) {
     </section>
   )
 }
-
