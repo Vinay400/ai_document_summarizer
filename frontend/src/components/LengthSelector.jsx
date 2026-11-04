@@ -1,7 +1,7 @@
 const LENGTHS = [
-  { id: 'short', name: 'Short (TL;DR)', detail: '~80-120 words' },
-  { id: 'medium', name: 'Medium (Standard)', detail: '~180-220 words' },
-  { id: 'long', name: 'Long (Detailed)', detail: '~300-400 words' },
+  { id: 'short', name: 'Short (TL;DR)', detail: '~50-80 words' },
+  { id: 'medium', name: 'Medium (Standard)', detail: '~110-160 words' },
+  { id: 'long', name: 'Long (Detailed)', detail: '~180-260 words' },
 ]
 
 export default function LengthSelector({ value, onChange, disabled }) {

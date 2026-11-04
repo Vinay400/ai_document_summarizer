@@ -17,6 +17,7 @@ hallucinate.
 """
 
 import logging
+import re
 from functools import lru_cache
 
 import networkx as nx
@@ -27,11 +28,39 @@ from app.services.chunking_service import split_sentences
 
 logger = logging.getLogger(__name__)
 
-# Fraction of the document's sentences to keep for each requested length.
-LENGTH_RATIOS = {"short": 0.15, "medium": 0.3, "long": 0.5}
+# Target sentence budgets and scaling ratios per requested length.
+# Rather than keeping an unbounded percentage that swings wildly between 2 and 40 sentences,
+# we use calibrated target counts with min/max bounds to ensure short, medium, and long
+# summaries are distinct, meaningful, and well-budgeted.
+LENGTH_SETTINGS = {
+    "short": {"target": 3, "min": 2, "max": 4, "ratio": 0.18},
+    "medium": {"target": 6, "min": 4, "max": 8, "ratio": 0.35},
+    "long": {"target": 12, "min": 6, "max": 14, "ratio": 0.55},
+}
 
 # Below this many sentences there is nothing worth compressing.
 MIN_SENTENCES = 3
+
+
+def is_candidate_sentence(s: str) -> bool:
+    """Filter out unparsed tabular dumps, citations, and placeholders.
+    
+    A clean narrative sentence:
+    - Has between 5 and 75 words.
+    - Is not a raw citation header like '[1]', 'References', 'Table 1.1'.
+    - Is not an image placeholder like '[ INSERT PHOTOGRAPH ... ]'.
+    - Does not contain multiple semi-colons or pipes typical of unparsed tables.
+    """
+    words = s.split()
+    if len(words) < 5 or len(words) > 75:
+        return False
+    if re.search(r"\[\s*INSERT\b", s, re.IGNORECASE):
+        return False
+    if re.match(r"^(\[\d+\]|References?\b|Table\s+\d+|Figure\s+\d+|http[s]?://)", s, re.IGNORECASE):
+        return False
+    if s.count(";") > 4 or s.count("|") > 2:
+        return False
+    return True
 
 
 @lru_cache(maxsize=1)
@@ -44,7 +73,10 @@ def _model():
     from sentence_transformers import SentenceTransformer
 
     logger.info("Loading extractive model %s", settings.EXTRACTIVE_MODEL)
-    return SentenceTransformer(settings.EXTRACTIVE_MODEL)
+    try:
+        return SentenceTransformer(settings.EXTRACTIVE_MODEL, local_files_only=True)
+    except Exception:
+        return SentenceTransformer(settings.EXTRACTIVE_MODEL)
 
 
 def rank_sentences(text: str) -> list[str]:
@@ -55,7 +87,12 @@ def rank_sentences(text: str) -> list[str]:
     if len(sentences) == 1:
         return sentences
 
-    embeddings = _model().encode(sentences, normalize_embeddings=True)
+    # Prioritize clean narrative sentences for ranking graph construction
+    candidates = [s for s in sentences if is_candidate_sentence(s)]
+    # Fallback to all sentences if document has few sentences or is heavily formatted
+    working_sentences = candidates if len(candidates) >= MIN_SENTENCES else sentences
+
+    embeddings = _model().encode(working_sentences, normalize_embeddings=True)
 
     # Normalised embeddings make the dot product the cosine similarity.
     # Similarities are clipped at zero because PageRank needs non-negative
@@ -65,7 +102,7 @@ def rank_sentences(text: str) -> list[str]:
 
     scores = nx.pagerank(nx.from_numpy_array(similarity))
     ranked_indices = sorted(scores, key=scores.get, reverse=True)
-    return [sentences[i] for i in ranked_indices]
+    return [working_sentences[i] for i in ranked_indices]
 
 
 def summarize(text: str, length: str = "medium") -> str:
@@ -78,8 +115,23 @@ def summarize(text: str, length: str = "medium") -> str:
     if len(sentences) < MIN_SENTENCES:
         return text.strip()
 
+    cfg = LENGTH_SETTINGS.get(length, LENGTH_SETTINGS["medium"])
     ranked = rank_sentences(text)
-    keep = max(1, round(len(sentences) * LENGTH_RATIOS.get(length, 0.3)))
+    if not ranked:
+        return text.strip()
+
+    # Calculate calibrated sentence budget:
+    # 1. Scale with document length using ratio
+    # 2. Bound between min and max bounds for the requested length
+    # 3. Ensure keep does not exceed available ranked sentences
+    scaled_count = round(len(ranked) * cfg["ratio"])
+    keep = min(len(ranked), max(cfg["min"], min(cfg["max"], scaled_count)))
+
+    # On shorter texts, ensure strict hierarchy: short < medium < long
+    if length == "short":
+        keep = min(keep, max(1, len(ranked) - 2))
+    elif length == "long":
+        keep = min(len(ranked), max(keep, min(len(ranked), cfg["min"] + 2)))
 
     top_k = ranked[:keep]
     top_k_counts = {}
@@ -93,5 +145,5 @@ def summarize(text: str, length: str = "medium") -> str:
             top_k_counts[s] -= 1
 
     summary = " ".join(chosen)
-    logger.info("Extractive: kept %d of %d sentence(s)", keep, len(sentences))
+    logger.info("Extractive: kept %d of %d sentence(s) for length '%s'", len(chosen), len(sentences), length)
     return summary
