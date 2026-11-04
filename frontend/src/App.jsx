@@ -31,7 +31,7 @@ export default function App() {
       <footer className="border-t border-slate-200/80 bg-white/70 py-6 text-center backdrop-blur-xs">
         <div className="mx-auto max-w-6xl px-4 text-xs text-slate-500 sm:px-6 lg:px-8 space-y-1">
           <p className="font-semibold text-slate-700">
-            AI Document Summarization Platform &middot; MCA Major Project
+            AI Document Summarization Platform &middot; MCA Minor Project
           </p>
           <p className="text-[11px] text-slate-400">
             Extractive TextRank &middot; Abstractive BART Map-Reduce &middot; Hybrid Pipeline &middot; RAG Assistant &middot; ROUGE &amp; BLEU Scoring

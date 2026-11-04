@@ -238,7 +238,7 @@ export default function Home({
         <div className="relative">
           <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200/60 bg-indigo-50/70 px-3 py-1 text-xs font-semibold text-indigo-700 mb-3.5">
             <span className="flex h-1.5 w-1.5 rounded-full bg-indigo-600 animate-pulse" />
-            MCA Major Project &middot; Intelligent Document Intelligence
+            MCA Minor Project &middot; Intelligent Document Intelligence
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             Automated Summarization &amp; Grounded Q&amp;A
